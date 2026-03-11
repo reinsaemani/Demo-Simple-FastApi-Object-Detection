@@ -1,0 +1,46 @@
+{
+  "filename": "IMG17085893611275837.png",
+  "timestamp": 1773224493,
+  "detections": [
+    {
+      "class": "Segitiga",
+      "confidence": 0.9790107011795044,
+      "bbox": [
+        191,
+        169,
+        591,
+        379
+      ]
+    },
+    {
+      "class": "Segitiga",
+      "confidence": 0.9759688973426819,
+      "bbox": [
+        917,
+        251,
+        1174,
+        364
+      ]
+    },
+    {
+      "class": "Segitiga",
+      "confidence": 0.9685772061347961,
+      "bbox": [
+        229,
+        745,
+        526,
+        862
+      ]
+    },
+    {
+      "class": "Segitiga",
+      "confidence": 0.9611033201217651,
+      "bbox": [
+        796,
+        647,
+        1235,
+        898
+      ]
+    }
+  ]
+}

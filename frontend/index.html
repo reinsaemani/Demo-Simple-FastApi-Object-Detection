@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Object Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background:#f4f6f9;
+            text-align:center;
+            padding-bottom:50px;
+        }
+        h1{
+            margin-top:30px;
+            margin-bottom:30px;
+        }
+        .container{
+            width:90%;
+            max-width:1200px;
+            margin:auto;
+        }
+        .upload-box{
+            border:2px dashed #aaa;
+            padding:40px;
+            background:white;
+            cursor:pointer;
+            margin-bottom:20px;
+        }
+        .upload-box:hover{
+            border-color:#007bff;
+        }
+        input[type="file"]{
+            display:none;
+        }
+        button{
+            margin:5px;
+            padding:10px 20px;
+            font-size:16px;
+            background:#007bff;
+            color:white;
+            border:none;
+            cursor:pointer;
+        }
+        button:hover{
+            background:#0056b3;
+        }
+        .grid{
+            display:grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap:20px;
+        }
+        .card{
+            background:white;
+            padding:10px;
+            border-radius:8px;
+            box-shadow:0 2px 5px rgba(0,0,0,0.1);
+            text-align:center;
+            position:relative;
+        }
+        .card img{
+            max-width:100%;
+            border:1px solid #ddd;
+            margin-bottom:10px;
+            cursor:pointer;
+            transition: transform 0.2s;
+        }
+        .card img:hover{
+            transform: scale(1.05);
+        }
+        .card h5{
+            margin-bottom:5px;
+            font-size:16px;
+            word-wrap: break-word;
+        }
+        .detection-list{
+            text-align:left;
+            font-size:14px;
+        }
+        .progress{
+            height:10px;
+            margin-top:5px;
+        }
+        /* Lightbox overlay */
+        #overlay{
+            display:none;
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background: rgba(0,0,0,0.8);
+            justify-content:center;
+            align-items:center;
+            z-index:9999;
+        }
+        #overlay img{
+            max-width:90%;
+            max-height:90%;
+            border:3px solid #fff;
+            border-radius:8px;
+        }
+        .checkbox-select{
+            position:absolute;
+            top:10px;
+            left:10px;
+            transform: scale(1.5);
+            display:none; /* Hanya tampil setelah deteksi */
+        }
+        .delete-btn{
+            position:absolute;
+            top:5px;
+            right:5px;
+            background:#ff4d4f;
+            color:white;
+            border:none;
+            border-radius:4px; /* kotak kecil */
+            width:22px;
+            height:22px;
+            font-weight:bold;
+            cursor:pointer;
+            font-size:14px;
+            line-height:18px;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            padding:0;
+        }
+        .delete-btn:hover{
+            background:#d9363e;
+        }
+    </style>
+</head>
+<body>
+
+<h1>AI Object Detection</h1>
+
+<div class="container">
+    <div class="upload-box" id="dropArea" onclick="document.getElementById('fileInput').click()">
+        <p>Drag & Drop Images or Click</p>
+        <input type="file" id="fileInput" multiple onchange="handleFiles(event)">
+    </div>
+
+    <div style="margin-bottom:15px;">
+        <label for="classFilter">Filter by class: </label>
+        <select id="classFilter" onchange="filterByClass()">
+            <option value="All">All</option>
+        </select>
+    </div>
+
+    <div id="actionButtons">
+        <button onclick="detectAll()" class="btn btn-primary">Detect Objects</button>
+        <button onclick="resetAll()" class="btn btn-danger">Reset</button>
+        <button onclick="selectAll()" class="btn btn-success" style="display:none;">Select All</button>
+        <button onclick="deselectAll()" class="btn btn-warning" style="display:none;">Deselect All</button>
+        <button onclick="saveSelected()" class="btn btn-info" style="display:none;">Save Selected</button>
+    </div>
+
+    <p id="loading" style="display:none;">Processing images...</p>
+
+    <div class="grid" id="resultsGrid"></div>
+</div>
+
+<!-- Overlay for zoom -->
+<div id="overlay" onclick="closeOverlay()">
+    <img id="overlayImg" src="">
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+let selectedFiles = []
+let allDetectedClasses = new Set() // Menyimpan semua class yang muncul
+
+function handleFiles(event){
+    selectedFiles = Array.from(event.target.files)
+    previewSelectedFiles()
+}
+
+const dropArea = document.getElementById("dropArea")
+dropArea.addEventListener("dragover", function(e){
+    e.preventDefault()
+    dropArea.style.borderColor = "#007bff"
+})
+dropArea.addEventListener("dragleave", function(e){
+    e.preventDefault()
+    dropArea.style.borderColor = "#aaa"
+})
+dropArea.addEventListener("drop", function(e){
+    e.preventDefault()
+    dropArea.style.borderColor = "#aaa"
+    selectedFiles = Array.from(e.dataTransfer.files)
+    previewSelectedFiles()
+})
+
+function previewSelectedFiles(){
+    const grid = document.getElementById("resultsGrid")
+    grid.innerHTML = ""
+    selectedFiles.forEach((file, index)=>{
+        const card = document.createElement("div")
+        card.className = "card"
+        card.dataset.index = index
+        card.innerHTML = `
+            <button class="delete-btn" onclick="removeFile(${index})">×</button>
+            <input type="checkbox" class="checkbox-select">
+            <h5>${file.name}</h5>
+            <img src="${URL.createObjectURL(file)}" alt="${file.name}" onclick="openOverlay(this)">
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+            </div>
+            <div class="detection-list">Not processed yet</div>
+        `
+        grid.appendChild(card)
+    })
+}
+
+function removeFile(index){
+    selectedFiles.splice(index, 1)
+    previewSelectedFiles()
+}
+
+async function detectAll(){
+    if(selectedFiles.length === 0){
+        alert("Please select images")
+        return
+    }
+
+    document.getElementById("loading").style.display = "block"
+    const grid = document.getElementById("resultsGrid")
+    grid.innerHTML = ""
+
+    allDetectedClasses.clear()
+
+    for(const [i, file] of selectedFiles.entries()){
+        const card = document.createElement("div")
+        card.className = "card"
+        card.dataset.index = i
+        card.innerHTML = `
+            <button class="delete-btn" onclick="removeFile(${i})">×</button>
+            <input type="checkbox" class="checkbox-select">
+            <h5>${file.name}</h5>
+            <img src="${URL.createObjectURL(file)}" alt="${file.name}" onclick="openOverlay(this)">
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+            </div>
+            <div class="detection-list">Processing...</div>
+        `
+        grid.appendChild(card)
+
+        const progressBar = card.querySelector(".progress-bar")
+        const detectionList = card.querySelector(".detection-list")
+        const checkbox = card.querySelector(".checkbox-select")
+        checkbox.style.display = "block"
+
+        const formData = new FormData()
+        formData.append("file", file)
+
+        // Annotated image
+        const imgResponse = await fetch("http://127.0.0.1:8000/detect-image", {method:"POST", body:formData})
+        progressBar.style.width = "50%"
+        const blob = await imgResponse.blob()
+        const annotatedURL = URL.createObjectURL(blob)
+        card.querySelector("img").src = annotatedURL
+
+        // Detections
+        const detectResponse = await fetch("http://127.0.0.1:8000/detect", {method:"POST", body:formData})
+        const data = await detectResponse.json()
+        progressBar.style.width = "100%"
+
+        let detectionHTML = ""
+        if(data.total_objects === 0){
+            detectionHTML = "<p>No objects detected</p>"
+            checkbox.style.display = "none"
+        } else {
+            data.detections.forEach(obj=>{
+                detectionHTML += `<p><span class="badge bg-primary">${obj.class}</span> — confidence: ${obj.confidence.toFixed(2)}</p>`
+                allDetectedClasses.add(obj.class)
+            })
+        }
+        detectionList.innerHTML = detectionHTML
+    }
+
+    updateClassFilter()
+
+    // Show select/save buttons
+    document.querySelector("button[onclick='selectAll()']").style.display = "inline-block"
+    document.querySelector("button[onclick='deselectAll()']").style.display = "inline-block"
+    document.querySelector("button[onclick='saveSelected()']").style.display = "inline-block"
+
+    document.getElementById("loading").style.display = "none"
+}
+
+// Overlay zoom
+function openOverlay(img){
+    document.getElementById("overlayImg").src = img.src
+    document.getElementById("overlay").style.display = "flex"
+}
+function closeOverlay(){
+    document.getElementById("overlay").style.display = "none"
+}
+
+// Select / Deselect
+function selectAll(){
+    document.querySelectorAll(".checkbox-select").forEach(cb=>cb.checked = true)
+}
+function deselectAll(){
+    document.querySelectorAll(".checkbox-select").forEach(cb=>cb.checked = false)
+}
+
+// Save selected images
+async function saveSelected(){
+    const zip = new JSZip()
+    const cards = document.querySelectorAll(".card")
+    for(const card of cards){
+        const checkbox = card.querySelector(".checkbox-select")
+        if(checkbox.checked){
+            const img = card.querySelector("img")
+            const response = await fetch(img.src)
+            const blob = await response.blob()
+            zip.file(card.querySelector("h5").innerText, blob)
+        }
+    }
+    if(Object.keys(zip.files).length === 0){
+        alert("No images selected!")
+        return
+    }
+    zip.generateAsync({type:"blob"}).then(function(content){
+        const link = document.createElement("a")
+        link.href = URL.createObjectURL(content)
+        link.download = "selected_images.zip"
+        link.click()
+    })
+}
+
+// Reset all
+function resetAll(){
+    selectedFiles = []
+    document.getElementById("fileInput").value = ""
+    document.getElementById("resultsGrid").innerHTML = ""
+    document.getElementById("loading").style.display = "none"
+    document.querySelector("button[onclick='selectAll()']").style.display = "none"
+    document.querySelector("button[onclick='deselectAll()']").style.display = "none"
+    document.querySelector("button[onclick='saveSelected()']").style.display = "none"
+    allDetectedClasses.clear()
+    updateClassFilter()
+}
+
+// Filter class
+function updateClassFilter(){
+    const select = document.getElementById("classFilter")
+    const current = select.value
+    select.innerHTML = '<option value="All">All</option>'
+    Array.from(allDetectedClasses).forEach(cls=>{
+        select.innerHTML += `<option value="${cls}">${cls}</option>`
+    })
+    select.value = current || "All"
+}
+
+function filterByClass(){
+    const filter = document.getElementById("classFilter").value
+    const cards = document.querySelectorAll(".card")
+    cards.forEach(card=>{
+        const text = card.querySelector(".detection-list").innerText
+        if(filter === "All" || text.includes(filter)){
+            card.style.display = "block"
+        }else{
+            card.style.display = "none"
+        }
+    })
+}
+</script>
+
+</body>
+</html>

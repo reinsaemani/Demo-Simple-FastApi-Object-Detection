@@ -1,0 +1,26 @@
+{
+  "filename": "2.png",
+  "timestamp": 1773226110,
+  "detections": [
+    {
+      "class": "Mangkok",
+      "confidence": 0.9503645300865173,
+      "bbox": [
+        863,
+        7,
+        1469,
+        261
+      ]
+    },
+    {
+      "class": "Mangkok",
+      "confidence": 0.8865960240364075,
+      "bbox": [
+        8,
+        4,
+        613,
+        259
+      ]
+    }
+  ]
+}

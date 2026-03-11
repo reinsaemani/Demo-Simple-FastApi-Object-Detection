@@ -1,0 +1,46 @@
+{
+  "filename": "img1697168913.jpg",
+  "timestamp": 1773227013,
+  "detections": [
+    {
+      "class": "Mangkok",
+      "confidence": 0.9778479933738708,
+      "bbox": [
+        0,
+        115,
+        569,
+        364
+      ]
+    },
+    {
+      "class": "Mangkok",
+      "confidence": 0.9708641767501831,
+      "bbox": [
+        702,
+        49,
+        1065,
+        217
+      ]
+    },
+    {
+      "class": "Mangkok",
+      "confidence": 0.9639527797698975,
+      "bbox": [
+        679,
+        671,
+        1148,
+        863
+      ]
+    },
+    {
+      "class": "Mangkok",
+      "confidence": 0.9598262906074524,
+      "bbox": [
+        178,
+        558,
+        540,
+        722
+      ]
+    }
+  ]
+}
